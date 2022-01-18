@@ -70,11 +70,10 @@ class RedisMasterSupervisorRepository implements MasterSupervisorRepository
      */
     public function get(array $names)
     {
-        $records = $this->connection()->pipeline(function ($pipe) use ($names) {
-            foreach ($names as $name) {
-                $pipe->hmget('master:'.$name, ['name', 'pid', 'status', 'supervisors']);
-            }
-        });
+        $records = [];
+        foreach ($names as $name) {
+            $records[] = $this->connection()->hmget('master:'.$name, ['name', 'pid', 'status', 'supervisors']);
+        }
 
         return collect($records)->map(function ($record) {
             $record = array_values($record);
@@ -98,22 +97,20 @@ class RedisMasterSupervisorRepository implements MasterSupervisorRepository
     {
         $supervisors = $master->supervisors->map->name->all();
 
-        $this->connection()->pipeline(function ($pipe) use ($master, $supervisors) {
-            $pipe->hmset(
-                'master:'.$master->name, [
-                    'name' => $master->name,
-                    'pid' => $master->pid(),
-                    'status' => $master->working ? 'running' : 'paused',
-                    'supervisors' => json_encode($supervisors),
-                ]
-            );
+        $this->connection()->hmset(
+            'master:'.$master->name, [
+                'name' => $master->name,
+                'pid' => $master->pid(),
+                'status' => $master->working ? 'running' : 'paused',
+                'supervisors' => json_encode($supervisors),
+            ]
+        );
 
-            $pipe->zadd('masters',
-                Chronos::now()->getTimestamp(), $master->name
-            );
+        $this->connection()->zadd('masters',
+            Chronos::now()->getTimestamp(), $master->name
+        );
 
-            $pipe->expire('master:'.$master->name, 15);
-        });
+        $this->connection()->expire('master:'.$master->name, 15);
     }
 
     /**

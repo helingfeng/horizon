@@ -77,11 +77,9 @@ class RedisTagRepository implements TagRepository
      */
     public function add($id, array $tags)
     {
-        $this->connection()->pipeline(function ($pipe) use ($id, $tags) {
-            foreach ($tags as $tag) {
-                $pipe->zadd($tag, $id, $id);
-            }
-        });
+        foreach ($tags as $tag) {
+            $this->connection()->zadd($tag, $id, $id);
+        }
     }
 
     /**
@@ -94,13 +92,11 @@ class RedisTagRepository implements TagRepository
      */
     public function addTemporary($minutes, $id, array $tags)
     {
-        $this->connection()->pipeline(function ($pipe) use ($minutes, $id, $tags) {
-            foreach ($tags as $tag) {
-                $pipe->zadd($tag, $id, $id);
+        foreach ($tags as $tag) {
+            $this->connection()->zadd($tag, $id, $id);
 
-                $pipe->expire($tag, $minutes * 60);
-            }
-        });
+            $this->connection()->expire($tag, $minutes * 60);
+        }
     }
 
     /**
@@ -153,13 +149,11 @@ class RedisTagRepository implements TagRepository
      */
     public function forgetJobs($tags, $ids)
     {
-        $this->connection()->pipeline(function ($pipe) use ($tags, $ids) {
-            foreach ((array) $tags as $tag) {
-                foreach ((array) $ids as $id) {
-                    $pipe->zrem($tag, $id);
-                }
+        foreach ((array) $tags as $tag) {
+            foreach ((array) $ids as $id) {
+                $this->connection()->zrem($tag, $id);
             }
-        });
+        }
     }
 
     /**

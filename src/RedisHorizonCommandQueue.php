@@ -54,12 +54,9 @@ class RedisHorizonCommandQueue implements HorizonCommandQueue
         if ($length < 1) {
             return [];
         }
+        $results[] = $this->connection()->lrange('commands:'.$name, 0, $length - 1);
 
-        $results = $this->connection()->pipeline(function ($pipe) use ($name, $length) {
-            $pipe->lrange('commands:'.$name, 0, $length - 1);
-
-            $pipe->ltrim('commands:'.$name, $length, -1);
-        });
+        $results[] = $this->connection()->ltrim('commands:'.$name, $length, -1);
 
         return collect($results[0])->map(function ($result) {
             return (object) json_decode($result, true);

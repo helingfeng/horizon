@@ -69,11 +69,10 @@ class RedisSupervisorRepository implements SupervisorRepository
      */
     public function get(array $names)
     {
-        $records = $this->connection()->pipeline(function ($pipe) use ($names) {
-            foreach ($names as $name) {
-                $pipe->hmget('supervisor:'.$name, ['name', 'master', 'pid', 'status', 'processes', 'options']);
-            }
-        });
+        $records = [];
+        foreach ($names as $name) {
+            $records[] = $this->connection()->hmget('supervisor:'.$name, ['name', 'master', 'pid', 'status', 'processes', 'options']);
+        }
 
         return collect($records)->filter()->map(function ($record) {
             $record = array_values($record);
@@ -113,24 +112,22 @@ class RedisSupervisorRepository implements SupervisorRepository
             return [$supervisor->options->connection.':'.$pool->queue() => count($pool->processes())];
         })->toJson();
 
-        $this->connection()->pipeline(function ($pipe) use ($supervisor, $processes) {
-            $pipe->hmset(
-                'supervisor:'.$supervisor->name, [
-                    'name' => $supervisor->name,
-                    'master' => implode(':', explode(':', $supervisor->name, -1)),
-                    'pid' => $supervisor->pid(),
-                    'status' => $supervisor->working ? 'running' : 'paused',
-                    'processes' => $processes,
-                    'options' => $supervisor->options->toJson(),
-                ]
-            );
+        $this->connection()->hmset(
+            'supervisor:'.$supervisor->name, [
+                'name' => $supervisor->name,
+                'master' => implode(':', explode(':', $supervisor->name, -1)),
+                'pid' => $supervisor->pid(),
+                'status' => $supervisor->working ? 'running' : 'paused',
+                'processes' => $processes,
+                'options' => $supervisor->options->toJson(),
+            ]
+        );
 
-            $pipe->zadd('supervisors',
-                Chronos::now()->getTimestamp(), $supervisor->name
-            );
+        $this->connection()->zadd('supervisors',
+            Chronos::now()->getTimestamp(), $supervisor->name
+        );
 
-            $pipe->expire('supervisor:'.$supervisor->name, 30);
-        });
+        $this->connection()->expire('supervisor:'.$supervisor->name, 30);
     }
 
     /**

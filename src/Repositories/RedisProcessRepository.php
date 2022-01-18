@@ -58,11 +58,9 @@ class RedisProcessRepository implements ProcessRepository
             $this->connection()->hdel($key, ...$shouldRemove);
         }
 
-        $this->connection()->pipeline(function ($pipe) use ($key, $time, $processIds) {
-            foreach ($processIds as $processId) {
-                $pipe->hsetnx($key, $processId, $time);
-            }
-        });
+        foreach ($processIds as $processId) {
+            $this->connection()->hsetnx($key, $processId, $time);
+        }
     }
 
     /**

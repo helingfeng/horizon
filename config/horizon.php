@@ -30,19 +30,6 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Horizon Redis Connection
-    |--------------------------------------------------------------------------
-    |
-    | This is the name of the Redis connection where Horizon will store the
-    | meta information required for it to function. It includes the list
-    | of supervisors, failed jobs, job metrics, and other information.
-    |
-    */
-
-    'use' => 'default',
-
-    /*
-    |--------------------------------------------------------------------------
     | Horizon Redis Prefix
     |--------------------------------------------------------------------------
     |
@@ -146,7 +133,7 @@ return [
                 'connection' => 'redis',
                 'queue' => ['default'],
                 'balance' => 'simple',
-                'processes' => 10,
+                'processes' => 5,
                 'tries' => 1,
             ],
         ],

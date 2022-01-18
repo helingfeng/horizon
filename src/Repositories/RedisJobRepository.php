@@ -219,11 +219,10 @@ class RedisJobRepository implements JobRepository
      */
     public function getJobs(array $ids, $indexFrom = 0)
     {
-        $jobs = $this->connection()->pipeline(function ($pipe) use ($ids) {
-            foreach ($ids as $id) {
-                $pipe->hmget($id, $this->keys);
-            }
-        });
+        $jobs = [];
+        foreach ($ids as $id) {
+            $jobs[] = $this->connection()->hmget($id, $this->keys);
+        }
 
         return $this->indexJobs(collect($jobs)->filter(function ($job) {
             $job = is_array($job) ? array_values($job) : null;
@@ -262,26 +261,24 @@ class RedisJobRepository implements JobRepository
      */
     public function pushed($connection, $queue, JobPayload $payload)
     {
-        $this->connection()->pipeline(function ($pipe) use ($connection, $queue, $payload) {
-            $this->storeJobReference($pipe, 'recent_jobs', $payload);
+        $this->storeJobReference($this->connection(), 'recent_jobs', $payload);
 
-            $time = str_replace(',', '.', microtime(true));
+        $time = str_replace(',', '.', microtime(true));
 
-            $pipe->hmset($payload->id(), [
-                'id' => $payload->id(),
-                'connection' => $connection,
-                'queue' => $queue,
-                'name' => $payload->decoded['displayName'],
-                'status' => 'pending',
-                'payload' => $payload->value,
-                'created_at' => $time,
-                'updated_at' => $time,
-            ]);
+        $this->connection()->hmset($payload->id(), [
+            'id' => $payload->id(),
+            'connection' => $connection,
+            'queue' => $queue,
+            'name' => $payload->decoded['displayName'],
+            'status' => 'pending',
+            'payload' => $payload->value,
+            'created_at' => $time,
+            'updated_at' => $time,
+        ]);
 
-            $pipe->expireat(
-                $payload->id(), Chronos::now()->addMinutes($this->recentJobExpires)->getTimestamp()
-            );
-        });
+        $this->connection()->expireat(
+            $payload->id(), Chronos::now()->addMinutes($this->recentJobExpires)->getTimestamp()
+        );
     }
 
     /**
@@ -335,25 +332,23 @@ class RedisJobRepository implements JobRepository
      */
     public function remember($connection, $queue, JobPayload $payload)
     {
-        $this->connection()->pipeline(function ($pipe) use ($connection, $queue, $payload) {
-            $this->storeJobReference($pipe, 'monitored_jobs', $payload);
+        $this->storeJobReference($this->connection(), 'monitored_jobs', $payload);
 
-            $pipe->hmset(
-                $payload->id(), [
-                    'id' => $payload->id(),
-                    'connection' => $connection,
-                    'queue' => $queue,
-                    'name' => $payload->decoded['displayName'],
-                    'status' => 'completed',
-                    'payload' => $payload->value,
-                    'completed_at' => str_replace(',', '.', microtime(true)),
-                ]
-            );
+        $this->connection()->hmset(
+            $payload->id(), [
+                'id' => $payload->id(),
+                'connection' => $connection,
+                'queue' => $queue,
+                'name' => $payload->decoded['displayName'],
+                'status' => 'completed',
+                'payload' => $payload->value,
+                'completed_at' => str_replace(',', '.', microtime(true)),
+            ]
+        );
 
-            $pipe->expireat(
-                $payload->id(), Chronos::now()->addMinutes($this->monitoredJobExpires)->getTimestamp()
-            );
-        });
+        $this->connection()->expireat(
+            $payload->id(), Chronos::now()->addMinutes($this->monitoredJobExpires)->getTimestamp()
+        );
     }
 
     /**
@@ -366,17 +361,15 @@ class RedisJobRepository implements JobRepository
      */
     public function migrated($connection, $queue, Collection $payloads)
     {
-        $this->connection()->pipeline(function ($pipe) use ($payloads) {
-            foreach ($payloads as $payload) {
-                $pipe->hmset(
-                    $payload->id(), [
-                        'status' => 'pending',
-                        'payload' => $payload->value,
-                        'updated_at' => str_replace(',', '.', microtime(true)),
-                    ]
-                );
-            }
-        });
+        foreach ($payloads as $payload) {
+            $this->connection()->hmset(
+                $payload->id(), [
+                    'status' => 'pending',
+                    'payload' => $payload->value,
+                    'updated_at' => str_replace(',', '.', microtime(true)),
+                ]
+            );
+        }
     }
 
     /**
@@ -392,9 +385,7 @@ class RedisJobRepository implements JobRepository
             $this->updateRetryInformationOnParent($payload, $failed);
         }
 
-        $this->connection()->pipeline(function ($pipe) use ($payload, $failed) {
-            $this->markJobAsCompleted($pipe, $payload->id(), $failed);
-        });
+        $this->markJobAsCompleted($this->connection(), $payload->id(), $failed);
     }
 
     /**
@@ -459,11 +450,9 @@ class RedisJobRepository implements JobRepository
      */
     public function deleteMonitored(array $ids)
     {
-        $this->connection()->pipeline(function ($pipe) use ($ids) {
-            foreach ($ids as $id) {
-                $pipe->expireat($id, Chronos::now()->addDays(7)->getTimestamp());
-            }
-        });
+        foreach ($ids as $id) {
+            $this->connection()->expireat($id, Chronos::now()->addDays(7)->getTimestamp());
+        }
     }
 
     /**
@@ -473,17 +462,15 @@ class RedisJobRepository implements JobRepository
      */
     public function trimRecentJobs()
     {
-        $this->connection()->pipeline(function ($pipe) {
-            $score = Chronos::now()->subMinutes($this->recentJobExpires)->getTimestamp() * -1;
+        $score = Chronos::now()->subMinutes($this->recentJobExpires)->getTimestamp() * -1;
 
-            $pipe->zremrangebyscore('recent_jobs', $score, '+inf');
+        $this->connection()->zremrangebyscore('recent_jobs', $score, '+inf');
 
-            if ($this->recentJobExpires !== $this->recentFailedJobExpires) {
-                $score = Chronos::now()->subMinutes($this->recentFailedJobExpires)->getTimestamp() * -1;
-            }
+        if ($this->recentJobExpires !== $this->recentFailedJobExpires) {
+            $score = Chronos::now()->subMinutes($this->recentFailedJobExpires)->getTimestamp() * -1;
+        }
 
-            $pipe->zremrangebyscore('recent_failed_jobs', $score, '+inf');
-        });
+        $this->connection()->zremrangebyscore('recent_failed_jobs', $score, '+inf');
     }
 
     /**
@@ -542,27 +529,25 @@ class RedisJobRepository implements JobRepository
      */
     public function failed($exception, $connection, $queue, JobPayload $payload)
     {
-        $this->connection()->pipeline(function ($pipe) use ($exception, $connection, $queue, $payload) {
-            $this->storeJobReference($pipe, 'failed_jobs', $payload);
-            $this->storeJobReference($pipe, 'recent_failed_jobs', $payload);
+        $this->storeJobReference($this->connection(), 'failed_jobs', $payload);
+        $this->storeJobReference($this->connection(), 'recent_failed_jobs', $payload);
 
-            $pipe->hmset(
-                $payload->id(), [
-                    'id' => $payload->id(),
-                    'connection' => $connection,
-                    'queue' => $queue,
-                    'name' => $payload->decoded['displayName'],
-                    'status' => 'failed',
-                    'payload' => $payload->value,
-                    'exception' => (string) $exception,
-                    'failed_at' => str_replace(',', '.', microtime(true)),
-                ]
-            );
+        $this->connection()->hmset(
+            $payload->id(), [
+                'id' => $payload->id(),
+                'connection' => $connection,
+                'queue' => $queue,
+                'name' => $payload->decoded['displayName'],
+                'status' => 'failed',
+                'payload' => $payload->value,
+                'exception' => (string) $exception,
+                'failed_at' => str_replace(',', '.', microtime(true)),
+            ]
+        );
 
-            $pipe->expireat(
-                $payload->id(), Chronos::now()->addMinutes($this->failedJobExpires)->getTimestamp()
-            );
-        });
+        $this->connection()->expireat(
+            $payload->id(), Chronos::now()->addMinutes($this->failedJobExpires)->getTimestamp()
+        );
     }
 
     /**

@@ -1,12 +1,12 @@
 {
-    "name": "laravel/horizon",
-    "description": "Dashboard and code-driven configuration for Laravel queues.",
+    "name": "helingfeng/horizon",
+    "description": "Dashboard and code-driven configuration for Laravel queues, Support redis cluster.",
     "keywords": ["laravel", "queue"],
     "license": "MIT",
     "authors": [
         {
-            "name": "Taylor Otwell",
-            "email": "taylor@laravel.com"
+            "name": "helingfeng",
+            "email": "dreamhelingfeng@gmail.com"
         }
     ],
     "require": {

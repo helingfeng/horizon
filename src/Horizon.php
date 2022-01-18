@@ -55,14 +55,19 @@ class Horizon
      * @var array
      */
     public static $databases = [
-        'Jobs', 'Supervisors', 'CommandQueue', 'Tags',
-        'Metrics', 'Locks', 'Processes',
+        'Jobs',
+        'Supervisors',
+        'CommandQueue',
+        'Tags',
+        'Metrics',
+        'Locks',
+        'Processes',
     ];
 
     /**
      * Determine if the given request can access the Horizon dashboard.
      *
-     * @param  \Illuminate\Http\Request  $request
+     * @param \Illuminate\Http\Request $request
      * @return bool
      */
     public static function check($request)
@@ -75,7 +80,7 @@ class Horizon
     /**
      * Set the callback that should be used to authenticate Horizon users.
      *
-     * @param  \Closure  $callback
+     * @param \Closure $callback
      * @return static
      */
     public static function auth(Closure $callback)
@@ -88,21 +93,21 @@ class Horizon
     /**
      * Configure the Redis databases that will store Horizon data.
      *
-     * @param  string  $connection
      * @return void
      * @throws Exception
      */
-    public static function use($connection)
+    public static function use()
     {
-        if (! is_null($config = config("database.redis.clusters.{$connection}.0"))) {
-            config(["database.redis.{$connection}" => $config]);
-        } elseif (is_null($config) && is_null($config = config("database.redis.{$connection}"))) {
-            throw new Exception("Redis connection [{$connection}] has not been configured.");
+        $config = config("database.redis");
+        if ($config['cluster']) {
+            $horizon = $config['clusters']['default'];
+            $horizon['options']['prefix'] = (config('horizon.prefix') ?: 'horizon:') . '{single}:';
+            config(['database.redis.clusters.horizon' => $horizon]);
+        } else {
+            $horizon = $config['clusters']['default'][0];
+            $horizon['options']['prefix'] = config('horizon.prefix') ?: 'horizon:';
+            config(['database.redis.horizon' => $horizon]);
         }
-
-        config(['database.redis.horizon' => array_merge($config, [
-            'options' => ['prefix' => config('horizon.prefix') ?: 'horizon:'],
-        ])]);
     }
 
     /**
@@ -132,7 +137,7 @@ class Horizon
     /**
      * Specify the email address to which email notifications should be routed.
      *
-     * @param  string  $email
+     * @param string $email
      * @return static
      */
     public static function routeMailNotificationsTo($email)
@@ -145,8 +150,8 @@ class Horizon
     /**
      * Specify the webhook URL and channel to which Slack notifications should be routed.
      *
-     * @param  string  $url
-     * @param  string  $channel
+     * @param string $url
+     * @param string $channel
      * @return static
      */
     public static function routeSlackNotificationsTo($url, $channel = null)
@@ -160,7 +165,7 @@ class Horizon
     /**
      * Specify the phone number to which SMS notifications should be routed.
      *
-     * @param  string  $number
+     * @param string $number
      * @return static
      */
     public static function routeSmsNotificationsTo($number)
