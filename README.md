@@ -6,6 +6,29 @@ Horizon provides a beautiful dashboard and code-driven configuration for your La
 
 All of your worker configuration is stored in a single, simple configuration file, allowing your configuration to stay in source control where your entire team can collaborate.
 
+
+## QuickStart
+
+Use Composer
+
+```shell
+ composer require helingfeng/horizon v3.8
+```
+
+Publish Assets
+
+```shell
+php artisan vendor:publish
+```
+
+Update Queue.php
+
+```shell
+'connection' => 'horizon'
+```
+
+
+
 ## Official Documentation
 
 Documentation for Horizon can be found on the [Laravel website](https://laravel.com/docs/horizon).
