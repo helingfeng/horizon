@@ -1,11 +1,14 @@
+[](./redis_cli.jpg)
+
 ## Introduction
 
 Support redis cluster.
 
+[](./ui.jpg)
+
 Horizon provides a beautiful dashboard and code-driven configuration for your Laravel powered Redis queues. Horizon allows you to easily monitor key metrics of your queue system such as job throughput, runtime, and job failures.
 
 All of your worker configuration is stored in a single, simple configuration file, allowing your configuration to stay in source control where your entire team can collaborate.
-
 
 ## QuickStart
 
