@@ -99,11 +99,11 @@ class Horizon
     public static function use()
     {
         $config = config("database.redis");
-        if ($config['cluster']) {
+        if (!empty($config['cluster']) && isset($config['clusters']['default'])) {
             $horizon = $config['clusters']['default'];
             $horizon['options']['prefix'] = (config('horizon.prefix') ?: 'horizon:') . '{single}:';
             config(['database.redis.clusters.horizon' => $horizon]);
-        } else {
+        } else if (isset($config['clusters']['default'])) {
             $horizon = $config['clusters']['default'][0];
             $horizon['options']['prefix'] = config('horizon.prefix') ?: 'horizon:';
             config(['database.redis.horizon' => $horizon]);
